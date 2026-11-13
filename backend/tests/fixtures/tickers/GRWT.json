@@ -1,0 +1,29 @@
+{
+ "ticker": "GRWT",
+ "name": "Growth Cloud Inc",
+ "sector": "Technology",
+ "industry": "Software - Infrastructure",
+ "market_cap": 900000000000.0,
+ "_note": "Never paid a dividend",
+ "dividends_adjusted": true,
+ "splits": [],
+ "dividends": [],
+ "eps_history": {
+  "2022": 3.57,
+  "2023": 3.74,
+  "2024": 3.91,
+  "2025": 4.07
+ },
+ "fcf_history": {
+  "2022": 3400000000.0,
+  "2023": 3560000000.0,
+  "2024": 3719999999.9999995,
+  "2025": 3880000000.0
+ },
+ "price": 85.0,
+ "eps_ttm": 4.2,
+ "ocf_ttm": 5000000000.0,
+ "capex_ttm": -1000000000.0,
+ "ocf_fy": 4750000000.0,
+ "capex_fy": -950000000.0
+}

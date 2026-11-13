@@ -1,0 +1,100 @@
+# 💰 Dividend "Pocket Money" Screener
+
+A local web app that screens the US stock universe with 5 sequential dividend rules, shows how many stocks survive each rule as a funnel, and lists the survivors for tracking.
+
+> **Educational screen, not financial advice.**
+
+![Main page (fixtures mode)](docs/screenshot-main.jpg)
+
+| # | Rule | Metric | Default |
+|---|------|--------|---------|
+| 1 | Pays a dividend | TTM dividends per share ÷ price | ≥ 3% |
+| 2 | Can afford it | TTM dividends ÷ TTM diluted EPS (EPS ≤ 0 fails) | ≤ 70% |
+| 3 | Has the cash | Operating cash flow − capex (TTM, else latest FY) | > $0 |
+| 4 | Pays reliably | Consecutive calendar years with dividends > 0 | ≥ 5 yrs |
+| 5 | Pays more each year | Consecutive years where the annual total beats the prior year | ≥ 5 yrs |
+
+Rules are applied in order, and each one only sees the stocks that survived the previous rule. A stock with a missing metric fails that rule, and the funnel counts it separately as "missing data".
+
+## Quick start
+
+Requirements: Python 3.11+, Node 20+.
+
+```bash
+make install          # backend/.venv + frontend/node_modules
+make dev-fixtures     # offline demo with 22 synthetic tickers → http://localhost:5173
+```
+
+With real data:
+
+```bash
+make refresh-dev      # ~50 well-known tickers, ~15 s
+make dev              # API on :8000 + Vite on :5173
+make refresh          # full US universe (see timings below)
+```
+
+Without `make`:
+
+```bash
+cd backend && .venv/bin/uvicorn app.main:app --port 8000      # add DIVSCREEN_FIXTURES=1 for offline mode
+cd frontend && npm run dev
+```
+
+`make build && make serve` serves the built frontend from FastAPI on a single port (:8000).
+
+Tests: `make test` (pytest + strict TypeScript check).
+
+## Refresh job
+
+```
+python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
+                      [--full] [--retry-errors] [--compute-only] [--fixtures]
+```
+
+- **Universe.** The job downloads `nasdaqlisted.txt` and `otherlisted.txt` from nasdaqtrader.com, then drops ETFs, test issues, warrants, units, rights, preferreds and notes. About 5,900 common stocks remain; the commonly quoted ~8,000 figure includes ETFs.
+- **Cache.** Normalized responses are cached in SQLite (`raw_data`, with `fetched_at`). Tickers refreshed within the last 24h are skipped unless you pass `--force`. A failed fetch is logged to `backend/data/refresh.log` and skipped, and any older good payload is kept.
+- **Speed shortcut.** Non-payers (no dividend in the last ~13 months) get only the price-history call and skip fundamentals, because they fail rule 1 either way. Pass `--full` to fetch everything for every stock.
+- **Compute.** After fetching, all metrics are recomputed into the `metrics` table. Screening is an in-memory pass over that table, with no network calls at request time.
+- **Timing.** A full run on a home connection took **≈ 12 minutes** (≈ 8 tickers/s with 6 workers). Yahoo throttles unpredictably. If you see many `RateLimit` errors, lower `--workers` and rerun with `--retry-errors`.
+
+## Metric details
+
+- **Split-adjusted dividends.** yfinance history is already split-adjusted. Providers that return raw amounts set `dividends_adjusted: false`, and `metrics.split_adjust` handles them.
+- **Streaks.** Streaks count back from the **last completed calendar year**, so a partial current year never breaks them.
+- **Special dividends** (the toggle, on by default). A payment counts as special when it is more than 3× the median of the stock's other payments within ±2 years, on *both* sides where data exists. A local median is used because decades of dividend growth would otherwise make every recent payment look "special". The two-sided check stops a switch from quarterly to annual payments being flagged.
+- **Ex-date timing.** When an ex-date slides across Jan 1, one year gets 5 quarterly payments and the next looks like a cut. For years with extra payments, or fewer payments offset by a neighbouring year with extras, the growth comparison uses *median payment × usual frequency*. A genuine mid-year suspension is not normalized, so it still counts as a cut.
+- **Raw streak lengths** for rules 4 and 5 are stored for both variants (`*_all` and `*_reg`), so the toggle is a free switch at query time.
+
+## API
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/screen?yield_min=3&payout_max=70&fcf_min=0&paid_years_min=5&growth_years_min=5&ignore_specials=true` | `{funnel: [{step, label, remaining, failed, failed_missing_data}], results: [...]}` |
+| `GET /api/screen/eliminated?step=N&…` | Stocks eliminated at step N (largest first) |
+| `GET /api/stock/{ticker}?…` | Metrics, per-rule checks, annual dividends, specials, EPS/FCF history |
+| `GET /api/meta` | Last refresh, universe size, fetch errors |
+| `GET/POST/DELETE /api/watchlist[/{ticker}]` | Watchlist; GET flags rules each stock now fails |
+
+## Fixtures / offline mode
+
+`backend/tests/fixtures/tickers/*.json` holds **22 synthetic companies** with fictional tickers. Each one exercises a rule or an edge case: a split stored unadjusted, a special dividend, a partial year, a missing year, a cut, negative EPS, missing EPS/price/cash flow, a fiscal-year FCF fallback, a REIT with payout over 100%, and a simulated fetch failure. Regenerate them with `make fixtures`. Fixture mode (`DIVSCREEN_FIXTURES=1`) rebuilds `backend/data/fixtures.db` at startup and uses a fixed as-of date of 2026-11-01.
+
+## Plugging in a paid provider
+
+Providers implement `DataProvider.fetch(ticker, full) -> TickerData` (`backend/app/providers/base.py`). A Financial Modeling Prep implementation is included:
+
+```bash
+cp .env.example .env   # set DIVSCREEN_PROVIDER=fmp and FMP_API_KEY=...
+make refresh
+```
+
+The FMP provider targets FMP's `/stable` endpoints but **has not been run against a live key**, so field names may need small adjustments for your plan. To add another source, write a class that returns the same `TickerData` dict and register it in `providers/__init__.py`.
+
+## Data-source caveats
+
+- **yfinance is unofficial.** It scrapes Yahoo Finance, which may rate-limit, change format, or return stale or incomplete data. Treat the numbers as indicative.
+- **Yahoo's dividend history** sometimes holds stray off-schedule entries and only goes back to ~1962. Long streaks therefore come out shorter than the published "Dividend King" counts (e.g. PG shows 42 growth years vs. 69 published, KO 55 vs. 63). This rarely matters at a 5-year threshold.
+- **Payout uses GAAP diluted EPS.** REITs (e.g. O) and MLPs usually fail rule 2 because they are judged on FFO/DCF rather than EPS. Large one-off charges can also spike the payout (e.g. GPC).
+- **FCF for banks and insurers** (e.g. JPM) swings with balance-sheet flows and is often negative or meaningless.
+- **Foreign ADRs** may report dividends in USD after withholding or currency conversion, so yields can be noisy.
+- Fetch failures are mostly delisted or renamed symbols that remain in the nasdaqtrader files.

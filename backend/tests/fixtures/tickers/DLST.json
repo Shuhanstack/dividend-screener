@@ -1,0 +1,14 @@
+{
+ "ticker": "DLST",
+ "name": "Delisted Holdings",
+ "sector": "Industrials",
+ "industry": "Conglomerates",
+ "market_cap": 50000000000.0,
+ "_note": "Fetch fails (simulated) -> missing data at rule 1",
+ "dividends_adjusted": true,
+ "splits": [],
+ "dividends": [],
+ "eps_history": {},
+ "fcf_history": {},
+ "_simulate_error": "no price history (possibly delisted)"
+}

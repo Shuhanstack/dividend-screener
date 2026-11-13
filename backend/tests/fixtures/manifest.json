@@ -1,0 +1,28 @@
+{
+ "as_of": "2026-11-01",
+ "synthetic": true,
+ "tickers": [
+  "STDY",
+  "UTIL",
+  "PIPE",
+  "BANK",
+  "LEAF",
+  "SPLT",
+  "PART",
+  "SPCL",
+  "GRWT",
+  "LOWY",
+  "DLST",
+  "NOPX",
+  "NEGE",
+  "HIPO",
+  "RLTY",
+  "NOEP",
+  "BURN",
+  "NOCF",
+  "YUNG",
+  "GAPY",
+  "CUTR",
+  "FLAT"
+ ]
+}
