@@ -208,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
         f"Fetched {len(todo):,} tickers in {time.time() - start:,.0f}s with {errors:,} errors "
         f"(see {data_dir / 'refresh.log'}). Metrics computed for {n:,} tickers."
     )
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # single-file DB for caching/copying
+    conn.close()
     return 0
 
 

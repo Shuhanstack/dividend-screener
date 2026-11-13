@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 const api = process.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
 export default defineConfig({
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react(), tailwindcss()],
   server: { port: 5173, proxy: { '/api': api } },
 })

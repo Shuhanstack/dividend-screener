@@ -1,3 +1,4 @@
+import { staticApi } from './staticApi'
 import type { EliminatedResponse, Meta, ScreenResponse, StockDetail, Thresholds, WatchItem } from './types'
 
 function qs(th: Thresholds, extra: Record<string, string | number> = {}): string {
@@ -12,7 +13,7 @@ async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
   return (await r.json()) as T
 }
 
-export const api = {
+const serverApi = {
   screen: (th: Thresholds, signal?: AbortSignal) => get<ScreenResponse>(`/api/screen?${qs(th)}`, signal),
   eliminated: (th: Thresholds, step: number, signal?: AbortSignal) =>
     get<EliminatedResponse>(`/api/screen/eliminated?${qs(th, { step, limit: 1000 })}`, signal),
@@ -25,3 +26,7 @@ export const api = {
     if (!r.ok) throw new Error(`${r.status}`)
   },
 }
+
+/** VITE_STATIC=1 builds a browser-only app that reads the exported snapshot (GitHub Pages). */
+export const isStatic = import.meta.env.VITE_STATIC === '1'
+export const api: typeof serverApi = isStatic ? staticApi : serverApi

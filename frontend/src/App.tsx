@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from './api'
+import { api, isStatic } from './api'
 import { Drawer } from './components/Drawer'
 import { Funnel } from './components/Funnel'
 import { RuleCard } from './components/RuleCard'
@@ -75,7 +75,10 @@ export default function App() {
             <h1 className="text-xl font-bold text-slate-900">
               <span className="mr-1">💰</span>Dividend Pocket-Money Screener
             </h1>
-            <p className="text-xs text-slate-500">Educational screen, not financial advice.</p>
+            <p className="text-xs text-slate-500">
+              A personal, educational project. Not financial advice.
+              {isStatic && ' Data refreshes weekly; your watchlist is saved in this browser only.'}
+            </p>
           </div>
           <div className="text-right text-xs text-slate-500">
             {meta?.fixtures_mode && (
@@ -219,7 +222,8 @@ export default function App() {
         )}
 
         <footer className="pb-6 text-center text-xs text-slate-400">
-          Data: {meta?.provider ?? 'yfinance'} (unofficial; may be delayed or incomplete). Educational screen, not financial advice.
+          Data: {meta?.provider ?? 'yfinance'} (unofficial Yahoo Finance data; may be delayed, incomplete or wrong). A personal,
+          educational project — not financial advice, not a recommendation to buy or sell any security.
         </footer>
       </main>
 

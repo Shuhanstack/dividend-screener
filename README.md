@@ -2,7 +2,10 @@
 
 A local web app that screens the US stock universe with 5 sequential dividend rules, shows how many stocks survive each rule as a funnel, and lists the survivors for tracking.
 
-> **Educational screen, not financial advice.**
+> [!IMPORTANT]
+> **This is a personal and educational project, not financial advice.** It is not a recommendation to buy, sell or hold any security. The data comes from an unofficial source and may be delayed, incomplete or wrong. Do your own research and consult a licensed professional before investing.
+
+**Live site:** https://shuhanstack.github.io/dividend-screener/ (refreshed weekly)
 
 ![Main page (fixtures mode)](docs/screenshot-main.jpg)
 
@@ -56,6 +59,38 @@ python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
 - **Speed shortcut.** Non-payers (no dividend in the last ~13 months) get only the price-history call and skip fundamentals, because they fail rule 1 either way. Pass `--full` to fetch everything for every stock.
 - **Compute.** After fetching, all metrics are recomputed into the `metrics` table. Screening is an in-memory pass over that table, with no network calls at request time.
 - **Timing.** A full run on a home connection took **≈ 12 minutes** (≈ 8 tickers/s with 6 workers). Yahoo throttles unpredictably. If you see many `RateLimit` errors, lower `--workers` and rerun with `--retry-errors`.
+
+## Weekly automation (GitHub Actions → GitHub Pages)
+
+[`.github/workflows/refresh-and-deploy.yml`](.github/workflows/refresh-and-deploy.yml) runs **once a week**, on Saturdays at 10:00 UTC (after Friday's US close). You can also start it from the Actions tab with **Run workflow**.
+
+Each run does the following:
+
+1. Restores last week's SQLite database from the Actions cache. Any ticker that fails this week then keeps its previous data.
+2. Runs `python -m app.refresh` over the full universe, then one `--retry-errors` pass.
+3. Refuses to publish if fewer than 3,000 stocks have data. In that case the previous site stays up.
+4. Runs `python -m app.export`, which writes `screen.json` and `details.json` (a few MB) to `frontend/public/data/`.
+5. Builds the frontend with `VITE_STATIC=1`, which does the screening **in the browser** with the same rules as the API, and deploys it to GitHub Pages.
+
+On the static site the watchlist is stored in your browser's localStorage, since there is no server.
+
+Setup, done once:
+
+- The repo is public, because Pages on GitHub's free plan needs a public repo.
+- Under **Settings → Pages**, the source is set to **GitHub Actions**.
+
+Caveats:
+
+- Yahoo sometimes throttles GitHub's cloud servers. A run can then take longer or fetch fewer stocks. The cache fallback and the 3,000-stock guard keep a bad week from replacing good data.
+- Actions cache entries unused for 7 days can be evicted. If that happens, the next run simply fetches everything fresh.
+- GitHub disables scheduled workflows in public repos after 60 days without repository activity. Re-enable it from the Actions tab, or push any commit.
+
+To try the static build locally:
+
+```bash
+cd backend && .venv/bin/python -m app.export --out ../frontend/public/data   # or --fixtures
+cd frontend && VITE_STATIC=1 npm run dev
+```
 
 ## Metric details
 
