@@ -118,6 +118,7 @@ cd frontend && VITE_STATIC=1 npm run dev
 | `GET /api/screen?yield_min=3&payout_max=70&fcf_min=0&paid_years_min=5&growth_years_min=5&ignore_specials=true` | `{funnel: [{step, label, remaining, failed, failed_missing_data}], results: [...]}` |
 | `GET /api/screen/eliminated?step=N&…` | Stocks eliminated at step N (largest first) |
 | `GET /api/stock/{ticker}?…` | Metrics, per-rule checks, annual dividends, specials, EPS/FCF history |
+| `GET /api/stock/{ticker}/prices` | Weekly closes, last 3 years (cached at refresh; older caches backfill from Yahoo on first view) |
 | `GET /api/meta` | Last refresh, universe size, fetch errors |
 | `GET/POST/DELETE /api/watchlist[/{ticker}]` | Watchlist; GET flags rules each stock now fails |
 

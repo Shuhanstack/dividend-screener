@@ -27,6 +27,8 @@ class TickerData(TypedDict, total=False):
     # {year: value} annual histories (for the detail drawer)
     eps_history: dict[str, float]
     fcf_history: dict[str, float]
+    # [[iso_date, close], ...] weekly closes for the last ~3 years
+    price_history: list[list[Any]]
     # True when fundamentals were skipped because the stock pays no dividend
     fundamentals_skipped: bool
 

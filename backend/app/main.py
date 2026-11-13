@@ -125,6 +125,36 @@ def stock(ticker: str, th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
     }
 
 
+@app.get("/api/stock/{ticker}/prices")
+def prices(ticker: str) -> dict[str, Any]:
+    """Weekly closes for the last ~3 years.
+
+    Served from the cached payload. Payloads cached before price history was
+    added are backfilled once from Yahoo on first request (real-data mode only).
+    """
+    t = ticker.upper()
+    row = state.conn.execute("SELECT payload FROM raw_data WHERE ticker = ?", (t,)).fetchone()
+    if not row:
+        raise HTTPException(404, f"{t} not found")
+    payload = json.loads(row["payload"]) if row["payload"] else None
+    points = (payload or {}).get("price_history") or []
+    source, error = "cache", None
+    if not points and payload is not None and not config.fixtures_mode() and config.PROVIDER == "yfinance":
+        from .providers.yfinance_provider import fetch_price_history
+
+        try:
+            points = fetch_price_history(t)
+            source = "live"
+            if points:
+                payload["price_history"] = points
+                with write_lock():  # cache it; payload_at is unchanged (other fields not refreshed)
+                    state.conn.execute("UPDATE raw_data SET payload = ? WHERE ticker = ?", (json.dumps(payload), t))
+                    state.conn.commit()
+        except Exception as exc:  # noqa: BLE001 - network/provider errors
+            error = str(exc)[:200]
+    return {"ticker": t, "points": [{"date": d, "close": c} for d, c in points], "source": source, "error": error}
+
+
 @app.get("/api/meta")
 def meta() -> dict[str, Any]:
     c = state.conn

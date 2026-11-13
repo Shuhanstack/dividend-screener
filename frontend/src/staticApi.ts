@@ -4,7 +4,7 @@
  * Watchlist lives in localStorage.
  */
 import type {
-  EliminatedResponse, FunnelStep, Meta, Outcome, RuleCheck, ScreenResponse, StockDetail, StockRow, Thresholds, WatchItem,
+  EliminatedResponse, FunnelStep, Meta, Outcome, PriceHistory, RuleCheck, ScreenResponse, StockDetail, StockRow, Thresholds, WatchItem,
 } from './types'
 
 export type Raw = Record<string, number | string | null>
@@ -204,6 +204,13 @@ export const staticApi = {
       watched: t in readWatch(),
       yahoo_url: `https://finance.yahoo.com/quote/${t}`,
     }
+  },
+  async prices(ticker: string): Promise<PriceHistory> {
+    const t = ticker.toUpperCase()
+    const r = await fetch(`${base()}data/prices/${encodeURIComponent(t)}.json`)
+    if (!r.ok) return { ticker: t, points: [] }
+    const pts = (await r.json()) as [string, number][]
+    return { ticker: t, points: pts.map(([date, close]) => ({ date, close })) }
   },
   async meta(): Promise<Meta> {
     return (await load()).meta

@@ -79,6 +79,13 @@ export interface StockDetail extends StockRow {
   yahoo_url: string
 }
 
+export interface PriceHistory {
+  ticker: string
+  points: { date: string; close: number }[]
+  source?: string
+  error?: string | null
+}
+
 export interface WatchItem extends StockRow {
   added_at: string
   fails: number[]

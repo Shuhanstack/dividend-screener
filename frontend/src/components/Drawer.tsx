@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '../api'
+import { PriceChart } from './PriceChart'
 import { fieldLabel, fmtDate, fmtMoney, fmtPct, fmtPrice, fmtShortDate, RULES, staleText } from '../lib'
 import type { Outcome, RuleCheck, StockDetail, Thresholds } from '../types'
 
@@ -149,6 +150,8 @@ export function Drawer({ ticker, th, onClose, onToggleStar }: Props) {
                 </div>
               ))}
             </div>
+
+            <PriceChart ticker={ticker} />
 
             <section>
               <h3 className="mb-2 font-semibold text-slate-900">Rule checks</h3>

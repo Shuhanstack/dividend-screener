@@ -68,3 +68,11 @@ def test_watchlist_flags_failures(client: TestClient) -> None:
     assert 1 in tight["STDY"]["fails"]
     client.delete("/api/watchlist/STDY")
     assert "STDY" not in {i["ticker"] for i in client.get("/api/watchlist").json()["items"]}
+
+
+def test_prices_endpoint(client: TestClient) -> None:
+    p = client.get("/api/stock/STDY/prices").json()
+    assert len(p["points"]) == 157 and p["source"] == "cache"
+    assert p["points"][-1]["date"] == "2026-11-01"
+    assert client.get("/api/stock/NOPX/prices").json()["points"] == []
+    assert client.get("/api/stock/NOPE/prices").status_code == 404

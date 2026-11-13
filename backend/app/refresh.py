@@ -50,7 +50,7 @@ def fetch_with_retry(provider: DataProvider, ticker: str, full: bool, attempts: 
 # Fields that may be carried over from the last good fetch when a new fetch
 # comes back without them (e.g. Yahoo served the price but not the statements).
 CARRY_FIELDS = ("price", "market_cap", "eps_ttm", "ocf_ttm", "capex_ttm", "ocf_fy", "capex_fy",
-                "eps_history", "fcf_history", "dividends")
+                "eps_history", "fcf_history", "dividends", "price_history")
 DESCRIPTIVE_FIELDS = ("name", "sector", "industry")  # copied silently, never "stale"
 FUNDAMENTAL_FIELDS = {"market_cap", "eps_ttm", "ocf_ttm", "capex_ttm", "ocf_fy", "capex_fy", "eps_history", "fcf_history"}
 

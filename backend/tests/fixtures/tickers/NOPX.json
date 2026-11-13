@@ -371,6 +371,7 @@
  },
  "price": null,
  "eps_ttm": 4.59,
+ "price_history": [],
  "ocf_ttm": 5000000000.0,
  "capex_ttm": -1000000000.0,
  "ocf_fy": 4750000000.0,

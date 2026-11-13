@@ -86,6 +86,19 @@ def annual_dps(s: Spec, year: int) -> float:
     return s.base * (1 + s.growth) ** (year - s.start)
 
 
+def synthetic_prices(ticker: str, last: float, weeks: int = 157) -> list[list]:
+    """Seeded random walk ending at ``last`` (synthetic, for offline demos)."""
+    import random
+
+    rng = random.Random(sum(ord(c) * (i + 1) for i, c in enumerate(ticker)))
+    vals = [last]
+    for _ in range(weeks - 1):
+        vals.append(vals[-1] / (1 + rng.gauss(0.0015, 0.025)))
+    vals.reverse()
+    days = [AS_OF - timedelta(days=7 * (weeks - 1 - i)) for i in range(weeks)]
+    return [[d.isoformat(), round(v, 2)] for d, v in zip(days, vals)]
+
+
 def build(s: Spec) -> dict:
     d: dict = {
         "ticker": s.ticker,
@@ -138,6 +151,7 @@ def build(s: Spec) -> dict:
         d["eps_ttm"] = s.eps_override
     else:
         d["eps_ttm"] = round(ttm / (s.payout_pct / 100), 2) if s.payout_pct and ttm else 3.0
+    d["price_history"] = [] if s.price_missing else synthetic_prices(s.ticker, price)
     if s.ocf_fy_only:
         d["ocf_ttm"], d["capex_ttm"], d["ocf_fy"], d["capex_fy"] = None, None, s.ocf, s.capex
     else:

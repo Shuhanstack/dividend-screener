@@ -42,6 +42,34 @@ def _first(s: pd.Series | None) -> float | None:
     return None
 
 
+PRICE_YEARS = 3
+
+
+def weekly_closes(closes: pd.Series, years: int = PRICE_YEARS) -> list[list[Any]]:
+    """Last ``years`` of daily closes, downsampled to the last close of each week."""
+    closes = closes.dropna()
+    if closes.empty:
+        return []
+    idx = closes.index
+    if getattr(idx, "tz", None) is not None:
+        closes = closes.tz_localize(None)
+    end = closes.index[-1]
+    recent = closes[closes.index > end - pd.DateOffset(years=years)]
+    weekly = recent.groupby(recent.index.to_period("W-FRI")).tail(1)
+    return [[ts.date().isoformat(), round(float(v), 4)] for ts, v in weekly.items()]
+
+
+def fetch_price_history(ticker: str, years: int = PRICE_YEARS) -> list[list[Any]]:
+    """Standalone price-history fetch (used to backfill older cached payloads)."""
+    import yfinance as yf
+
+    try:
+        hist = yf.Ticker(ticker).history(period=f"{years + 1}y", auto_adjust=False, raise_errors=True)
+    except Exception as exc:  # noqa: BLE001
+        raise _wrap(exc) from exc
+    return weekly_closes(hist["Close"], years) if hist is not None and not hist.empty else []
+
+
 def _wrap(exc: Exception) -> Exception:
     msg = f"{type(exc).__name__}: {exc}"
     if "RateLimit" in type(exc).__name__ or "Too Many Requests" in str(exc) or "429" in str(exc):
@@ -77,6 +105,7 @@ class YFinanceProvider(DataProvider):
             "splits": [[ts.date().isoformat(), float(v)] for ts, v in splits.items()],
             "eps_history": {},
             "fcf_history": {},
+            "price_history": weekly_closes(hist["Close"]),
         }
 
         recent_div = any(

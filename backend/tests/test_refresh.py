@@ -107,3 +107,26 @@ def test_field_level_stale_reaches_metrics(tmp_path: Path) -> None:
     recompute_all(conn, date(2026, 11, 8))
     r = load_rows(conn)[0]
     assert r["eps_ttm"] == 3.0 and json.loads(r["stale"]) == ["eps_ttm"]
+
+
+def test_weekly_closes_downsampling() -> None:
+    import pandas as pd
+
+    from app.providers.yfinance_provider import weekly_closes
+
+    idx = pd.bdate_range("2021-01-01", "2026-11-12", tz="America/New_York")
+    closes = pd.Series(range(len(idx)), index=idx, dtype=float)
+    pts = weekly_closes(closes)
+    assert 155 <= len(pts) <= 158
+    assert pts[-1] == ["2026-11-12", float(len(idx) - 1)]  # latest close kept even mid-week
+    assert pts[0][0] > "2023-11-12"
+
+
+def test_export_writes_price_files(tmp_path: Path) -> None:
+    from app.export import export
+    from app.refresh import build_fixture_db
+
+    out = tmp_path / "data"
+    n = export(build_fixture_db(tmp_path / "f.db"), out)
+    assert n["prices"] == 20  # 22 fixtures minus the failed fetch and the no-price ticker
+    assert len(json.loads((out / "prices" / "STDY.json").read_text())) == 157

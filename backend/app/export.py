@@ -62,7 +62,20 @@ def export(conn: Any, out: Path) -> dict[str, int]:
         d.pop("capex", None)
         details[r["ticker"]] = d
     (out / "details.json").write_text(json.dumps(details, separators=(",", ":")))
-    return {"rows": len(rows), "details": len(details)}
+
+    # one small file per ticker, fetched only when its detail drawer opens
+    pdir = out / "prices"
+    if pdir.exists():
+        for f in pdir.glob("*.json"):
+            f.unlink()
+    pdir.mkdir(parents=True, exist_ok=True)
+    n_prices = 0
+    for r in conn.execute("SELECT ticker, payload FROM raw_data WHERE payload IS NOT NULL"):
+        pts = json.loads(r["payload"]).get("price_history") or []
+        if pts:
+            (pdir / f"{r['ticker']}.json").write_text(json.dumps(pts, separators=(",", ":")))
+            n_prices += 1
+    return {"rows": len(rows), "details": len(details), "prices": n_prices}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -77,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         conn = connect(config.db_path(False))
     n = export(conn, args.out)
-    print(f"Exported {n['rows']:,} rows and {n['details']:,} detail records to {args.out}")
+    print(f"Exported {n['rows']:,} rows, {n['details']:,} detail records and {n['prices']:,} price files to {args.out}")
     return 0
 
 

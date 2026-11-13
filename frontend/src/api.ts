@@ -1,5 +1,5 @@
 import { staticApi } from './staticApi'
-import type { EliminatedResponse, Meta, ScreenResponse, StockDetail, Thresholds, WatchItem } from './types'
+import type { EliminatedResponse, Meta, PriceHistory, ScreenResponse, StockDetail, Thresholds, WatchItem } from './types'
 
 function qs(th: Thresholds, extra: Record<string, string | number> = {}): string {
   const p = new URLSearchParams()
@@ -19,6 +19,8 @@ const serverApi = {
     get<EliminatedResponse>(`/api/screen/eliminated?${qs(th, { step, limit: 1000 })}`, signal),
   stock: (ticker: string, th: Thresholds, signal?: AbortSignal) =>
     get<StockDetail>(`/api/stock/${encodeURIComponent(ticker)}?${qs(th)}`, signal),
+  prices: (ticker: string, signal?: AbortSignal) =>
+    get<PriceHistory>(`/api/stock/${encodeURIComponent(ticker)}/prices`, signal),
   meta: () => get<Meta>('/api/meta'),
   watchlist: (th: Thresholds, signal?: AbortSignal) => get<{ items: WatchItem[] }>(`/api/watchlist?${qs(th)}`, signal),
   watch: async (ticker: string, on: boolean): Promise<void> => {
