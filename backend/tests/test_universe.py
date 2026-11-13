@@ -15,12 +15,13 @@ BRK.B|Berkshire Hathaway Inc. Class B|N|BRK.B|N|100|N|BRK=B
 C$N|Citigroup Inc. Depositary Shares representing 1/1000th Preferred Series N|N|CPRN|N|100|N|C-N
 SPY|SPDR S&P 500 ETF Trust|P|SPY|Y|100|N|SPY
 ASGI|abrdn Global Infrastructure Income Fund|N|ASGI|N|100|N|ASGI
+DJP|iPath Bloomberg Commodity Index Total Return ETN|P|DJP|Y|100|N|DJP
 FOO.WS|Foo Corp Warrants|N|FOO.WS|N|100|N|FOO=W
 File Creation Time: 1112202608:01|||||||
 """
 
 
 def test_parse_excludes_non_common() -> None:
-    assert [s for s, _, _ in parse_file(NASDAQ, "nasdaq")] == ["AAPL"]
-    # closed-end funds (ASGI) are kept; ETFs (SPY) are not
-    assert [s for s, _, _ in parse_file(OTHER, "other")] == ["KO", "BRK-B", "ASGI"]
+    assert [s for s, _, _ in parse_file(NASDAQ, "nasdaq")] == ["AAPL", "QQQ"]
+    # ETFs (SPY) and closed-end funds (ASGI) are kept; ETNs are not
+    assert [s for s, _, _ in parse_file(OTHER, "other")] == ["KO", "BRK-B", "SPY", "ASGI"]

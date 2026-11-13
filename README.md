@@ -54,11 +54,11 @@ python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
                       [--full] [--retry-errors] [--compute-only] [--fixtures]
 ```
 
-- **Universe.** The job downloads `nasdaqlisted.txt` and `otherlisted.txt` from nasdaqtrader.com, then drops ETFs, test issues, warrants, units, rights, preferreds and notes. About 5,900 remain: common stocks plus closed-end funds, which have no ETF flag and are kept on purpose. The commonly quoted ~8,000 figure includes ETFs.
+- **Universe.** The job downloads `nasdaqlisted.txt` and `otherlisted.txt` from nasdaqtrader.com, then drops ETFs, test issues, warrants, units, rights, preferreds and notes. About 11,600 remain: ~5,900 common stocks and closed-end funds plus ~5,700 ETFs. ETNs (exchange-traded notes) are excluded. ETFs go through the same 5 rules, but Yahoo has no earnings or cash-flow data for funds, so nearly all ETFs stop at rule 2 as "missing data".
 - **Cache.** Normalized responses are cached in SQLite (`raw_data`, with `fetched_at`). Tickers refreshed within the last 24h are skipped unless you pass `--force`. A failed fetch is logged to `backend/data/refresh.log` and skipped, and any older good payload is kept.
 - **Speed shortcut.** Non-payers (no dividend in the last ~13 months) get only the price-history call and skip fundamentals, because they fail rule 1 either way. Pass `--full` to fetch everything for every stock.
 - **Compute.** After fetching, all metrics are recomputed into the `metrics` table. Screening is an in-memory pass over that table, with no network calls at request time.
-- **Timing.** A full run on a home connection took **≈ 12 minutes** (≈ 8 tickers/s with 6 workers). Yahoo throttles unpredictably. If you see many `RateLimit` errors, lower `--workers` and rerun with `--retry-errors`.
+- **Timing.** A full stocks-only run on a home connection took **≈ 50 minutes** (≈ 2–9 tickers/s with 6 workers). With ETFs included, expect **≈ 1.5–2 hours**. Yahoo throttles unpredictably. If you see many `RateLimit` errors, lower `--workers` and rerun with `--retry-errors`.
 
 ## Weekly automation (GitHub Actions → GitHub Pages)
 
@@ -67,7 +67,7 @@ python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
 Each run does the following:
 
 1. **Restores last week's database** from the repo's `data` branch, using [`scripts/data-branch.sh`](scripts/data-branch.sh). The branch holds one commit, the gzipped SQLite database (~3 MB), and is force-pushed each run so the repo doesn't grow.
-2. **Refreshes from Yahoo** with a **200-minute time budget**, then makes one 30-minute retry pass for failed tickers. Stocks are fetched oldest-data-first, so a run that stops early is picked up where it left off next week.
+2. **Refreshes from Yahoo** with a **270-minute time budget**, then makes one 30-minute retry pass for failed tickers. Stocks are fetched oldest-data-first, so a run that stops early is picked up where it left off next week.
 3. **Saves the database back** to the `data` branch. This step always runs, even if the refresh step failed, but is skipped if the database fails an integrity check.
 4. **Checks before publishing.** Fewer than 3,000 stocks with data means no publish. More than half of stocks not refreshed adds a warning.
 5. **Exports and deploys.** It writes `screen.json` and `details.json` and builds the frontend with `VITE_STATIC=1`, which does the screening **in the browser** with the same rules as the API (verified identical on 432 threshold combinations). The result is deployed to GitHub Pages.

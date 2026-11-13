@@ -22,7 +22,7 @@ EXCHANGES = {"A": "NYSE American", "N": "NYSE", "P": "NYSE Arca", "Z": "Cboe BZX
 _EXCLUDE_NAME = re.compile(
     r"\b(warrants?|units?|rights?|preferred|pfd|preference|depositary shares? (each )?representing"
     r"|notes? due|debentures?|subordinated|trust preferred|% (senior )?notes|perpetual|"
-    r"exchange[- ]traded|etn|etf)\b",  # closed-end funds are kept (ETFs are dropped via the ETF flag)
+    r"etns?|exchange[- ]traded notes?)\b",  # ETFs and closed-end funds are kept; ETNs (notes) are not
     re.IGNORECASE,
 )
 
@@ -47,7 +47,8 @@ def parse_file(text: str, kind: str) -> list[tuple[str, str, str]]:
         rec = dict(zip(header, line.split("|")))
         sym = rec.get("Symbol") or rec.get("ACT Symbol") or ""
         name = rec.get("Security Name", "")
-        if not sym or rec.get("ETF") == "Y" or rec.get("Test Issue") == "Y" or rec.get("NextShares") == "Y":
+        # ETFs are kept on purpose (rec["ETF"] == "Y"); they are screened with the same 5 rules
+        if not sym or rec.get("Test Issue") == "Y" or rec.get("NextShares") == "Y":
             continue
         if _excluded_symbol(sym) or _EXCLUDE_NAME.search(name):
             continue

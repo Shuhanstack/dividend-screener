@@ -125,6 +125,10 @@ class YFinanceProvider(DataProvider):
         data["market_cap"] = _num(info.get("marketCap"))
         data["price"] = _num(info.get("currentPrice")) or _num(info.get("regularMarketPrice")) or price
         data["eps_ttm"] = _num(info.get("trailingEps"))
+        if info.get("quoteType") in ("ETF", "MUTUALFUND"):
+            # funds publish no income/cash-flow statements on Yahoo: skip 3 requests
+            data["quote_type"] = info.get("quoteType")
+            return data
 
         # Statements: failures here are non-fatal (metric becomes missing).
         try:

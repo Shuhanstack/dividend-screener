@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v7
 
@@ -46,7 +46,7 @@ jobs:
       - name: Restore previous database
         run: scripts/data-branch.sh restore backend/data/screener.db
 
-      # Time budgets leave room in the 5h job limit, so a slow week still
+      # Time budgets leave room in the job limit (GitHub max is 6h), so a slow week still
       # publishes: fresh data where it arrived, last week's for the rest.
       # Fetch order is oldest-data-first, so next week starts where this one stopped.
       - name: Refresh data from Yahoo Finance
@@ -54,7 +54,7 @@ jobs:
         env:
           LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          ARGS="--workers 4 --time-budget-min 200"
+          ARGS="--workers 4 --time-budget-min 270"
           if [ -n "$LIMIT" ]; then ARGS="$ARGS --limit $LIMIT"; fi
           .venv/bin/python -m app.refresh $ARGS 2>&1 | tr '\r' '\n' | grep -v '^Fetching' || true
           # one retry pass for tickers that failed (usually rate limits)
