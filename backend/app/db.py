@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS metrics (
     paid_years_reg      INTEGER,
     growth_years_all    INTEGER,
     growth_years_reg    INTEGER,
+    price_change_3y     REAL,        -- % price change over the last 3 years (NULL if < 3y history)
     detail              TEXT,        -- JSON: annual dividends, specials, histories
     data_as_of          TEXT,        -- when this ticker's data was last fetched successfully
     stale               TEXT,        -- JSON list: ["all"] = not refreshed in the latest run,
@@ -85,7 +86,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE raw_data ADD COLUMN payload_at TEXT")
         conn.execute("UPDATE raw_data SET payload_at = fetched_at WHERE payload IS NOT NULL")
     m_cols = {r[1] for r in conn.execute("PRAGMA table_info(metrics)")}
-    if "stale" not in m_cols:  # metrics is derived data: just rebuild the table
+    if not {"stale", "price_change_3y"} <= m_cols:  # metrics is derived data: just rebuild the table
         conn.execute("DROP TABLE metrics")
         conn.executescript(SCHEMA)
     conn.commit()

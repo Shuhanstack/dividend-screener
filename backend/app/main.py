@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .db import connect, get_meta, now_iso, write_lock
-from .screen import RULES, Thresholds, checks, eliminated_at, first_failure, load_rows, public_row, run_screen
+from .screen import Thresholds, active_rules, checks, eliminated_at, first_failure, load_rows, public_row, run_screen
 
 
 class State:
@@ -37,6 +37,16 @@ def _open() -> None:
         state.conn = build_fixture_db(path)
     else:
         state.conn = connect(path)
+        # metrics is derived data; a schema migration rebuilds it empty, so recompute from the cache
+        has_metrics = state.conn.execute("SELECT 1 FROM metrics LIMIT 1").fetchone()
+        has_raw = state.conn.execute("SELECT 1 FROM raw_data WHERE payload IS NOT NULL LIMIT 1").fetchone()
+        if has_raw and not has_metrics:
+            from datetime import date
+
+            from .compute import recompute_all
+
+            as_of = get_meta(state.conn, "as_of")
+            recompute_all(state.conn, date.fromisoformat(as_of) if as_of else date.today())
 
 
 @asynccontextmanager
@@ -67,8 +77,12 @@ def thresholds(
     paid_years_min: int = Query(5, ge=0),
     growth_years_min: int = Query(5, ge=0),
     ignore_specials: bool = Query(True),
+    price_filter: bool = Query(False),
+    price_drop_max: float = Query(20.0, ge=0),
 ) -> Thresholds:
-    return Thresholds(yield_min, payout_max, fcf_min, paid_years_min, growth_years_min, ignore_specials)
+    return Thresholds(
+        yield_min, payout_max, fcf_min, paid_years_min, growth_years_min, ignore_specials, price_filter, price_drop_max
+    )
 
 
 def watch_set() -> set[str]:
@@ -85,7 +99,7 @@ def screen(th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
 
 
 @app.get("/api/screen/eliminated")
-def eliminated(step: int = Query(..., ge=1, le=5), limit: int = Query(500, le=10000), th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
+def eliminated(step: int = Query(..., ge=1, le=6), limit: int = Query(500, le=10000), th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
     items = eliminated_at(rows(), th, step)
     return {
         "step": step,
@@ -183,7 +197,7 @@ def get_watchlist(th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
         if r is None:
             items.append({"ticker": t, "added_at": added, "has_data": False, "fails": [], "missing": [], "watched": True})
             continue
-        res = [(s, fn(r, th)) for s, _, fn in RULES]
+        res = [(s, fn(r, th)) for s, _, fn in active_rules(th)]
         pr = public_row(r, th)
         pr.update(
             added_at=added,

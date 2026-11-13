@@ -194,6 +194,21 @@ def free_cash_flow(
     return None, None
 
 
+def price_change(points: Sequence[tuple[date, float]], years: int = 3, slack_days: int = 30) -> float | None:
+    """Percent change from the first to the last close over ``years``.
+
+    Returns None when the history does not span (almost) the full period,
+    e.g. a stock listed less than 3 years ago.
+    """
+    pts = [(d, c) for d, c in points if c and c > 0]
+    if len(pts) < 2:
+        return None
+    (d0, c0), (d1, c1) = pts[0], pts[-1]
+    if (d1 - d0).days < years * 365 - slack_days:
+        return None
+    return (c1 / c0 - 1.0) * 100.0
+
+
 # --------------------------------------------------------------------------- #
 # Aggregate
 # --------------------------------------------------------------------------- #

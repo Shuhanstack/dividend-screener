@@ -33,7 +33,12 @@ interface Detail {
 const v = (r: Raw, base: string, th: Thresholds) => r[`${base}_${th.ignore_specials ? 'reg' : 'all'}`] as number | null
 
 type RuleFn = (r: Raw, th: Thresholds) => Outcome
-const RULE_FNS: [number, string, RuleFn][] = [
+const PRICE_RULE: [number, string, RuleFn] = [6, 'Price held up', (r, th) => {
+  const ch = r.price_change_3y as number | null
+  return ch == null ? 'missing' : ch >= -th.price_drop_max ? 'pass' : 'fail'
+}]
+
+const BASE_RULES: [number, string, RuleFn][] = [
   [1, 'Pays a dividend', (r, th) => {
     if (!r.has_data) return 'missing'
     const y = v(r, 'yield', th)
@@ -60,8 +65,11 @@ const RULE_FNS: [number, string, RuleFn][] = [
   }],
 ]
 
+/** The 5 dividend rules, plus rule 6 when the price filter is on (mirrors screen.active_rules). */
+const rulesFor = (th: Thresholds): [number, string, RuleFn][] => (th.price_filter ? [...BASE_RULES, PRICE_RULE] : BASE_RULES)
+
 function firstFailure(r: Raw, th: Thresholds): [number, Outcome] | null {
-  for (const [step, , fn] of RULE_FNS) {
+  for (const [step, , fn] of rulesFor(th)) {
     const o = fn(r, th)
     if (o !== 'pass') return [step, o]
   }
@@ -84,6 +92,7 @@ export function publicRow(r: Raw, th: Thresholds): StockRow {
     fcf_source: r.fcf_source as string | null,
     paid_years: v(r, 'paid_years', th),
     growth_years: v(r, 'growth_years', th),
+    price_change_3y: r.price_change_3y as number | null,
     has_special: Boolean(r.has_special),
     has_data: Boolean(r.has_data),
     data_as_of: r.data_as_of as string | null,
@@ -94,7 +103,7 @@ export function publicRow(r: Raw, th: Thresholds): StockRow {
 export function runScreen(rows: Raw[], th: Thresholds): ScreenResponse {
   const funnel: FunnelStep[] = [{ step: 0, label: 'Universe', remaining: rows.length, failed: 0, failed_missing_data: 0 }]
   let survivors = rows
-  for (const [step, label, fn] of RULE_FNS) {
+  for (const [step, label, fn] of rulesFor(th)) {
     const next: Raw[] = []
     let missing = 0
     let failed = 0
@@ -114,9 +123,12 @@ export function runScreen(rows: Raw[], th: Thresholds): ScreenResponse {
 function checks(r: Raw, th: Thresholds): RuleCheck[] {
   const values: Record<number, number | null> = {
     1: v(r, 'yield', th), 2: v(r, 'payout', th), 3: r.fcf as number | null, 4: v(r, 'paid_years', th), 5: v(r, 'growth_years', th),
+    6: r.price_change_3y as number | null,
   }
-  const thr: Record<number, number> = { 1: th.yield_min, 2: th.payout_max, 3: th.fcf_min, 4: th.paid_years_min, 5: th.growth_years_min }
-  return RULE_FNS.map(([step, label, fn]) => ({ step, label, outcome: fn(r, th), value: values[step] ?? null, threshold: thr[step] ?? 0 }))
+  const thr: Record<number, number> = {
+    1: th.yield_min, 2: th.payout_max, 3: th.fcf_min, 4: th.paid_years_min, 5: th.growth_years_min, 6: -th.price_drop_max,
+  }
+  return rulesFor(th).map(([step, label, fn]) => ({ step, label, outcome: fn(r, th), value: values[step] ?? null, threshold: thr[step] ?? 0 }))
 }
 
 // ------------------------------------------------------------------ data loading
@@ -224,7 +236,7 @@ export const staticApi = {
       if (!r) {
         return { ticker: t, name: null, sector: null, industry: null, price: null, market_cap: null, dps_ttm: null, yield: null, eps_ttm: null, payout: null, fcf: null, fcf_source: null, paid_years: null, growth_years: null, has_special: false, has_data: false, watched: true, added_at: w[t] ?? '', fails: [], missing: [] }
       }
-      const res = RULE_FNS.map(([s, , fn]) => [s, fn(r, th)] as const)
+      const res = rulesFor(th).map(([s, , fn]) => [s, fn(r, th)] as const)
       return {
         ...publicRow(r, th), watched: true, added_at: w[t] ?? '',
         fails: res.filter(([, o]) => o === 'fail').map(([s]) => s),

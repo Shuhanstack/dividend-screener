@@ -76,3 +76,20 @@ def test_prices_endpoint(client: TestClient) -> None:
     assert p["points"][-1]["date"] == "2026-11-01"
     assert client.get("/api/stock/NOPX/prices").json()["points"] == []
     assert client.get("/api/stock/NOPE/prices").status_code == 404
+
+
+def test_price_filter_rule_6(client: TestClient) -> None:
+    off = client.get("/api/screen").json()
+    assert len(off["funnel"]) == 6  # rule 6 only appears when enabled
+    on = client.get("/api/screen", params={"price_filter": "true", "price_drop_max": 20}).json()
+    assert len(on["funnel"]) == 7 and on["funnel"][6]["label"] == "Price held up"
+    assert on["funnel"][5]["remaining"] == off["funnel"][5]["remaining"]
+    assert all(r["price_change_3y"] >= -20 for r in on["results"])
+    dropped = client.get("/api/screen/eliminated", params={"step": 6, "price_filter": "true"}).json()
+    assert all(i["price_change_3y"] is None or i["price_change_3y"] < -20 for i in dropped["items"])
+    assert dropped["total"] == on["funnel"][6]["failed"]
+    # a looser threshold never keeps fewer
+    loose = client.get("/api/screen", params={"price_filter": "true", "price_drop_max": 60}).json()
+    assert loose["funnel"][6]["remaining"] >= on["funnel"][6]["remaining"]
+    d = client.get("/api/stock/STDY", params={"price_filter": "true"}).json()
+    assert [c["step"] for c in d["checks"]] == [1, 2, 3, 4, 5, 6]

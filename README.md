@@ -17,7 +17,7 @@ A local web app that screens the US stock universe with 5 sequential dividend ru
 | 4 | Pays reliably | Consecutive calendar years with dividends > 0 | ≥ 5 yrs |
 | 5 | Pays more each year | Consecutive years where the annual total beats the prior year | ≥ 5 yrs |
 
-Rules are applied in order, and each one only sees the stocks that survived the previous rule. A stock with a missing metric fails that rule, and the funnel counts it separately as "missing data".
+Rules are applied in order, and each one only sees the stocks that survived the previous rule. An optional **rule 6, "Price held up"** (off by default) drops anything whose price fell more than a set percentage (default 20%) over the last 3 years. It applies to stocks, funds and ETFs alike; less than 3 years of price history counts as missing data. A stock with a missing metric fails that rule, and the funnel counts it separately as "missing data".
 
 ## Quick start
 

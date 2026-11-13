@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '../api'
 import { PriceChart } from './PriceChart'
-import { fieldLabel, fmtDate, fmtMoney, fmtPct, fmtPrice, fmtShortDate, RULES, staleText } from '../lib'
+import { fieldLabel, fmtDate, fmtMoney, fmtPct, fmtPrice, fmtShortDate, fmtSignedPct, RULES, staleText } from '../lib'
 import type { Outcome, RuleCheck, StockDetail, Thresholds } from '../types'
 
 interface Props {
@@ -23,12 +23,15 @@ function fmtCheck(c: RuleCheck): string {
       return fmtPct(c.value, 0)
     case 3:
       return fmtMoney(c.value)
+    case 6:
+      return `${fmtSignedPct(c.value)} in 3y`
     default:
       return `${c.value} yrs`
   }
 }
 
 function fmtThreshold(c: RuleCheck): string {
+  if (c.step === 6) return `≥ ${fmtSignedPct(c.threshold, 0)}`
   const r = RULES[c.step - 1]
   if (!r) return ''
   const v = c.step === 3 ? fmtMoney(c.threshold) : c.step <= 2 ? `${c.threshold}%` : `${c.threshold} yrs`

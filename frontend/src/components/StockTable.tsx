@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { downloadCsv, fmtInt, fmtMoney, fmtPct, fmtPrice, staleText } from '../lib'
+import { downloadCsv, fmtInt, fmtMoney, fmtPct, fmtPrice, fmtSignedPct, staleText } from '../lib'
 import type { StockRow } from '../types'
 
-type SortKey = 'ticker' | 'name' | 'sector' | 'price' | 'yield' | 'payout' | 'fcf' | 'paid_years' | 'growth_years' | 'market_cap'
+type SortKey = 'ticker' | 'name' | 'sector' | 'price' | 'price_change_3y' | 'yield' | 'payout' | 'fcf' | 'paid_years' | 'growth_years' | 'market_cap'
 
 interface Props<T extends StockRow> {
   rows: T[]
@@ -36,6 +36,14 @@ const COLS: { key: SortKey; label: string; num?: boolean; render: (r: StockRow) 
   { key: 'name', label: 'Name', render: (r) => <span className="line-clamp-1 max-w-[16rem]" title={r.name ?? ''}>{r.name ?? '—'}</span> },
   { key: 'sector', label: 'Sector', render: (r) => <span className="text-slate-600">{r.sector ?? '—'}</span> },
   { key: 'price', label: 'Price', num: true, render: (r) => fmtPrice(r.price) },
+  {
+    key: 'price_change_3y',
+    label: '3y price',
+    num: true,
+    render: (r) => (
+      <span className={r.price_change_3y != null && r.price_change_3y < 0 ? 'text-red-600' : ''}>{fmtSignedPct(r.price_change_3y, 0)}</span>
+    ),
+  },
   { key: 'yield', label: 'Yield', num: true, render: (r) => fmtPct(r.yield) },
   { key: 'payout', label: 'Payout', num: true, render: (r) => fmtPct(r.payout, 0) },
   { key: 'fcf', label: 'FCF', num: true, render: (r) => <span className={r.fcf != null && r.fcf < 0 ? 'text-red-600' : ''}>{fmtMoney(r.fcf)}</span> },

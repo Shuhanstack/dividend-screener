@@ -5,6 +5,7 @@ import { Funnel } from './components/Funnel'
 import { RuleCard } from './components/RuleCard'
 import { StockTable } from './components/StockTable'
 import { DEFAULT_THRESHOLDS, fmtDate, fmtInt, PRESETS, RULES, sameThresholds, toApi, useDebounced, useLocalStorage } from './lib'
+import { PriceFilter } from './components/PriceFilter'
 import type { EliminatedResponse, Meta, ScreenResponse, StockRow, Thresholds, WatchItem } from './types'
 
 type Tab = 'screen' | 'watchlist'
@@ -67,6 +68,11 @@ export default function App() {
   const preset = PRESETS.find((p) => sameThresholds(p.th, th))
   const funnel = screen?.funnel ?? []
 
+  // turning the price filter off removes step 6; close its eliminated list
+  useEffect(() => {
+    if (!th.price_filter && selectedStep === 6) setSelectedStep(null)
+  }, [th.price_filter, selectedStep])
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
@@ -128,7 +134,7 @@ export default function App() {
           {PRESETS.map((p) => (
             <button
               key={p.name}
-              onClick={() => setTh({ ...p.th, ignore_specials: th.ignore_specials })}
+              onClick={() => setTh({ ...p.th, ignore_specials: th.ignore_specials, price_filter: th.price_filter, price_drop_max: th.price_drop_max })}
               className={`rounded-full border px-3 py-1 text-sm ${preset?.name === p.name ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white hover:bg-slate-50'}`}
             >
               {p.name}
@@ -160,6 +166,8 @@ export default function App() {
           ))}
         </section>
 
+        <PriceFilter th={th} setTh={setTh} funnel={funnel} />
+
         {tab.tab === 'screen' ? (
           <>
             {screen && <Funnel funnel={funnel} selected={selectedStep} onSelect={setSelectedStep} />}
@@ -169,7 +177,8 @@ export default function App() {
                 rows={mark(eliminated.items)}
                 title={
                   <span>
-                    <span className="text-amber-700">Eliminated at rule {selectedStep}</span> · {RULES[selectedStep - 1]?.title}{' '}
+                    <span className="text-amber-700">Eliminated at rule {selectedStep}</span> ·{' '}
+                    {selectedStep === 6 ? 'Price held up' : RULES[selectedStep - 1]?.title}{' '}
                     <span className="text-sm font-normal text-slate-500">
                       ({fmtInt(eliminated.total)} stocks, {fmtInt(eliminated.missing_data)} for missing data
                       {eliminated.total > eliminated.items.length ? `; largest ${fmtInt(eliminated.items.length)} shown` : ''})
@@ -191,7 +200,7 @@ export default function App() {
               rows={mark(screen?.results ?? [])}
               title={
                 <span>
-                  Survivors <span className="text-sm font-normal text-slate-500">— passed all 5 rules</span>
+                  Survivors <span className="text-sm font-normal text-slate-500">— passed all {th.price_filter ? 6 : 5} rules</span>
                 </span>
               }
               csvName="dividend-survivors.csv"

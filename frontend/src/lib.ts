@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import type { StockRow, Thresholds } from './types'
 
 // ---------------------------------------------------------------- rules & presets
+type RuleKey = 'yield_min' | 'payout_max' | 'fcf_min' | 'paid_years_min' | 'growth_years_min'
+
 export interface RuleDef {
   step: number
-  key: keyof Omit<Thresholds, 'ignore_specials'>
+  key: RuleKey
   title: string
   metric: string
   explain: string
@@ -25,6 +27,7 @@ export const RULES: RuleDef[] = [
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
   yield_min: 3, payout_max: 70, fcf_min: 0, paid_years_min: 5, growth_years_min: 5, ignore_specials: true,
+  price_filter: false, price_drop_max: 20,
 }
 
 export const PRESETS: { name: string; th: Thresholds }[] = [
@@ -32,8 +35,13 @@ export const PRESETS: { name: string; th: Thresholds }[] = [
   { name: 'Relaxed', th: { ...DEFAULT_THRESHOLDS, yield_min: 2, payout_max: 80, paid_years_min: 3, growth_years_min: 3 } },
 ]
 
+/** Presets cover the 5 dividend rules only; the specials toggle and price filter are separate. */
 export function sameThresholds(a: Thresholds, b: Thresholds): boolean {
-  return (Object.keys(a) as (keyof Thresholds)[]).every((k) => a[k] === b[k])
+  return RULES.every((r) => a[r.key] === b[r.key])
+}
+
+export function fmtSignedPct(n: number | null | undefined, d = 1): string {
+  return n == null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(d)}%`
 }
 
 /** The UI edits FCF in $M; the API takes dollars. */
@@ -115,7 +123,7 @@ export function staleText(r: StockRow): string | null {
 
 // ---------------------------------------------------------------- CSV
 export function downloadCsv(rows: StockRow[], filename: string): void {
-  const cols: (keyof StockRow)[] = ['ticker', 'name', 'sector', 'industry', 'price', 'yield', 'payout', 'fcf', 'paid_years', 'growth_years', 'market_cap', 'dps_ttm', 'eps_ttm', 'data_as_of']
+  const cols: (keyof StockRow)[] = ['ticker', 'name', 'sector', 'industry', 'price', 'yield', 'payout', 'fcf', 'paid_years', 'growth_years', 'market_cap', 'dps_ttm', 'eps_ttm', 'price_change_3y', 'data_as_of']
   const esc = (v: unknown) => {
     if (v == null) return ''
     const s = String(v)

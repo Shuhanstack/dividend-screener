@@ -119,9 +119,13 @@ def stale_tickers(conn: sqlite3.Connection, tickers: list[str], max_age: timedel
     next run starts with the tickers this one didn't reach.
     """
     cutoff = (datetime.now(timezone.utc) - max_age).isoformat(timespec="seconds")
+    # payloads cached before price history existed count as stale so they get refetched once
     age = {
-        r["ticker"]: (r["payload_at"] or "", r["error"] is None)
-        for r in conn.execute("SELECT ticker, payload_at, error FROM raw_data")
+        r["ticker"]: (r["payload_at"] or "", r["error"] is None and bool(r["has_prices"]))
+        for r in conn.execute(
+            """SELECT ticker, payload_at, error, instr(COALESCE(payload, ''), '"price_history"') AS has_prices
+               FROM raw_data"""
+        )
     }
     todo = [t for t in tickers if not (t in age and age[t][1] and age[t][0] >= cutoff)]
     order = {t: i for i, t in enumerate(tickers)}

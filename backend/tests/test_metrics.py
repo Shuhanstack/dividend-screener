@@ -203,3 +203,13 @@ def test_frequency_change_is_not_special() -> None:
     pays = quarterly(2006, 2010, {y: 0.25 * 1.05 ** (y - 2006) for y in range(2006, 2011)})
     pays += [(date(y, 11, 15), 1.05 ** (y - 2006)) for y in range(2011, 2026)]
     assert not any(m.special_flags(pays))
+
+
+def test_price_change_full_window() -> None:
+    pts = [(date(2023, 11, 3), 50.0), (date(2025, 1, 1), 70.0), (date(2026, 11, 1), 40.0)]
+    assert m.price_change(pts) == pytest.approx(-20.0)
+
+
+def test_price_change_needs_three_years() -> None:
+    assert m.price_change([(date(2025, 1, 1), 50.0), (date(2026, 11, 1), 40.0)]) is None
+    assert m.price_change([]) is None

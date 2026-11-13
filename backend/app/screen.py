@@ -18,6 +18,9 @@ class Thresholds:
     paid_years_min: int = 5
     growth_years_min: int = 5
     ignore_specials: bool = True
+    # optional rule 6: exclude anything whose price fell more than this over 3 years
+    price_filter: bool = False
+    price_drop_max: float = 20.0
 
 
 def _v(row: dict[str, Any], base: str, th: Thresholds) -> Any:
@@ -66,18 +69,32 @@ def r_growth(row: dict[str, Any], th: Thresholds) -> Outcome:
     return "pass" if n >= th.growth_years_min else "fail"
 
 
-RULES: list[tuple[int, str, Callable[[dict[str, Any], Thresholds], Outcome]]] = [
+def r_price(row: dict[str, Any], th: Thresholds) -> Outcome:
+    ch = row.get("price_change_3y")
+    if ch is None:
+        return "missing"  # less than 3 years of price history
+    return "pass" if ch >= -th.price_drop_max else "fail"
+
+
+Rule = tuple[int, str, Callable[[dict[str, Any], Thresholds], Outcome]]
+RULES: list[Rule] = [
     (1, "Pays a dividend", r_yield),
     (2, "Can afford it", r_payout),
     (3, "Has the cash", r_fcf),
     (4, "Pays reliably", r_paid),
     (5, "Pays more each year", r_growth),
 ]
+PRICE_RULE: Rule = (6, "Price held up", r_price)
+
+
+def active_rules(th: Thresholds) -> list[Rule]:
+    """The 5 dividend rules, plus rule 6 when the price filter is on."""
+    return RULES + [PRICE_RULE] if th.price_filter else RULES
 
 LIST_COLUMNS = (
     "ticker, name, sector, industry, market_cap, price, eps_ttm, fcf, fcf_source, has_data, has_special, "
     "dps_ttm_all, dps_ttm_reg, yield_all, yield_reg, payout_all, payout_reg, paid_years_all, paid_years_reg, "
-    "growth_years_all, growth_years_reg, data_as_of, stale"
+    "growth_years_all, growth_years_reg, price_change_3y, data_as_of, stale"
 )
 
 
@@ -86,11 +103,11 @@ def load_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def evaluate(row: dict[str, Any], th: Thresholds) -> list[Outcome]:
-    return [fn(row, th) for _, _, fn in RULES]
+    return [fn(row, th) for _, _, fn in active_rules(th)]
 
 
 def first_failure(row: dict[str, Any], th: Thresholds) -> tuple[int, Outcome] | None:
-    for step, _, fn in RULES:
+    for step, _, fn in active_rules(th):
         o = fn(row, th)
         if o != "pass":
             return step, o
@@ -113,6 +130,7 @@ def public_row(row: dict[str, Any], th: Thresholds) -> dict[str, Any]:
         "fcf_source": row.get("fcf_source"),
         "paid_years": _v(row, "paid_years", th),
         "growth_years": _v(row, "growth_years", th),
+        "price_change_3y": row.get("price_change_3y"),
         "has_special": bool(row.get("has_special")),
         "has_data": bool(row.get("has_data")),
         "data_as_of": row.get("data_as_of"),
@@ -123,7 +141,7 @@ def public_row(row: dict[str, Any], th: Thresholds) -> dict[str, Any]:
 def run_screen(rows: list[dict[str, Any]], th: Thresholds) -> dict[str, Any]:
     funnel = [{"step": 0, "label": "Universe", "remaining": len(rows), "failed": 0, "failed_missing_data": 0}]
     survivors = rows
-    for step, label, fn in RULES:
+    for step, label, fn in active_rules(th):
         nxt: list[dict[str, Any]] = []
         missing = failed = 0
         for r in survivors:
@@ -161,9 +179,13 @@ def checks(row: dict[str, Any], th: Thresholds) -> list[dict[str, Any]]:
         3: row.get("fcf"),
         4: _v(row, "paid_years", th),
         5: _v(row, "growth_years", th),
+        6: row.get("price_change_3y"),
     }
-    thresholds = {1: th.yield_min, 2: th.payout_max, 3: th.fcf_min, 4: th.paid_years_min, 5: th.growth_years_min}
+    thresholds = {
+        1: th.yield_min, 2: th.payout_max, 3: th.fcf_min, 4: th.paid_years_min, 5: th.growth_years_min,
+        6: -th.price_drop_max,
+    }
     return [
         {"step": s, "label": label, "outcome": fn(row, th), "value": values[s], "threshold": thresholds[s]}
-        for s, label, fn in RULES
+        for s, label, fn in active_rules(th)
     ]

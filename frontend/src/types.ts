@@ -5,6 +5,9 @@ export interface Thresholds {
   paid_years_min: number
   growth_years_min: number
   ignore_specials: boolean
+  /** optional rule 6: drop anything whose price fell more than price_drop_max % over 3 years */
+  price_filter: boolean
+  price_drop_max: number
 }
 
 export interface FunnelStep {
@@ -30,6 +33,8 @@ export interface StockRow {
   fcf_source: string | null
   paid_years: number | null
   growth_years: number | null
+  /** % price change over the last 3 years; null when there is less than 3 years of history */
+  price_change_3y?: number | null
   has_special: boolean
   has_data: boolean
   watched?: boolean

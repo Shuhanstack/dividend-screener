@@ -8,10 +8,11 @@ interface Props {
   onSelect: (step: number | null) => void
 }
 
-const NAMES = ['Universe', '1 · Pays', '2 · Affords', '3 · Cash', '4 · Reliable', '5 · Grows']
+const NAMES = ['Universe', '1 · Pays', '2 · Affords', '3 · Cash', '4 · Reliable', '5 · Grows', '6 · Price']
 
 export function Funnel({ funnel, selected, onSelect }: Props) {
   const data = funnel.map((f, i) => ({ ...f, name: NAMES[i] ?? f.label }))
+  const lastStep = funnel.length - 1
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -54,7 +55,7 @@ export function Funnel({ funnel, selected, onSelect }: Props) {
               className="cursor-pointer"
             >
               {data.map((d) => (
-                <Cell key={d.step} fill={d.step === selected ? '#b45309' : d.step === 5 ? '#047857' : '#10b981'} fillOpacity={selected != null && d.step !== selected ? 0.55 : 1} />
+                <Cell key={d.step} fill={d.step === selected ? '#b45309' : d.step === lastStep ? '#047857' : '#10b981'} fillOpacity={selected != null && d.step !== selected ? 0.55 : 1} />
               ))}
               <LabelList dataKey="remaining" position="right" formatter={(v: unknown) => fmtInt(Number(v))} style={{ fontSize: 12, fill: '#0f172a' }} />
             </Bar>

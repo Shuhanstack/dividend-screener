@@ -71,7 +71,10 @@ def compute_row(
         "capex": payload.get("capex_ttm") if fcf_src == "ttm" else payload.get("capex_fy"),
     }
 
+    prices = [(date.fromisoformat(str(d)[:10]), float(c)) for d, c in payload.get("price_history", []) or []]
+
     row.update(
+        price_change_3y=m.price_change(prices),
         name=payload.get("name") or fallback_name,
         sector=payload.get("sector"),
         industry=payload.get("industry"),
@@ -100,7 +103,7 @@ def compute_row(
 COLUMNS = [
     "ticker", "name", "sector", "industry", "market_cap", "price", "eps_ttm", "fcf", "fcf_source",
     "has_data", "has_special", "dps_ttm_all", "dps_ttm_reg", "yield_all", "yield_reg", "payout_all",
-    "payout_reg", "paid_years_all", "paid_years_reg", "growth_years_all", "growth_years_reg", "detail",
+    "payout_reg", "paid_years_all", "paid_years_reg", "growth_years_all", "growth_years_reg", "price_change_3y", "detail",
     "data_as_of", "stale", "computed_at",
 ]
 
