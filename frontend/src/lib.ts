@@ -93,9 +93,29 @@ export function fmtDate(iso: string | null | undefined): string {
   return d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+// ---------------------------------------------------------------- staleness
+const FIELD_LABELS: Record<string, string> = {
+  price: 'price', market_cap: 'market cap', eps_ttm: 'EPS', ocf_ttm: 'operating cash flow', capex_ttm: 'capex',
+  ocf_fy: 'operating cash flow (FY)', capex_fy: 'capex (FY)', eps_history: 'EPS history', fcf_history: 'FCF history',
+  dividends: 'dividend history',
+}
+
+export const fieldLabel = (f: string): string => FIELD_LABELS[f] ?? f
+
+export function fmtShortDate(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown date'
+}
+
+/** One-line explanation of why a stock shows older data, or null when fresh. */
+export function staleText(r: StockRow): string | null {
+  if (!r.stale?.length) return null
+  if (r.stale.includes('all')) return `Not refreshed in the latest run; showing data from ${fmtShortDate(r.data_as_of)}.`
+  return `Latest fetch was missing ${r.stale.map((f) => FIELD_LABELS[f] ?? f).join(', ')}; using the last known values.`
+}
+
 // ---------------------------------------------------------------- CSV
 export function downloadCsv(rows: StockRow[], filename: string): void {
-  const cols: (keyof StockRow)[] = ['ticker', 'name', 'sector', 'industry', 'price', 'yield', 'payout', 'fcf', 'paid_years', 'growth_years', 'market_cap', 'dps_ttm', 'eps_ttm']
+  const cols: (keyof StockRow)[] = ['ticker', 'name', 'sector', 'industry', 'price', 'yield', 'payout', 'fcf', 'paid_years', 'growth_years', 'market_cap', 'dps_ttm', 'eps_ttm', 'data_as_of']
   const esc = (v: unknown) => {
     if (v == null) return ''
     const s = String(v)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '../api'
-import { fmtDate, fmtMoney, fmtPct, fmtPrice, RULES } from '../lib'
+import { fieldLabel, fmtDate, fmtMoney, fmtPct, fmtPrice, fmtShortDate, RULES, staleText } from '../lib'
 import type { Outcome, RuleCheck, StockDetail, Thresholds } from '../types'
 
 interface Props {
@@ -125,6 +125,17 @@ export function Drawer({ ticker, th, onClose, onToggleStar }: Props) {
 
         {d && (
           <div className="space-y-6 p-5">
+            {staleText(d) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <span className="mr-1">⏱</span>
+                {staleText(d)}
+                {d.stale_since && Object.keys(d.stale_since).length > 0 && !d.stale?.includes('all') && (
+                  <span className="block text-xs text-amber-800">
+                    {Object.entries(d.stale_since).map(([f, at]) => `${fieldLabel(f)} as of ${fmtShortDate(at)}`).join(' · ')}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 ['Price', fmtPrice(d.price)],
@@ -239,7 +250,10 @@ export function Drawer({ ticker, th, onClose, onToggleStar }: Props) {
               </section>
             )}
 
-            <p className="text-xs text-slate-400">Data fetched {fmtDate(d.fetched_at)}.</p>
+            <p className="text-xs text-slate-400">
+              Data last fetched successfully {fmtDate(d.data_as_of)}
+              {d.fetched_at && d.fetched_at !== d.data_as_of ? `; last attempt ${fmtDate(d.fetched_at)}` : ''}.
+            </p>
           </div>
         )}
       </aside>

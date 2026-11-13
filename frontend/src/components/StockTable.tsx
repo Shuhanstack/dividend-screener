@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { downloadCsv, fmtInt, fmtMoney, fmtPct, fmtPrice } from '../lib'
+import { downloadCsv, fmtInt, fmtMoney, fmtPct, fmtPrice, staleText } from '../lib'
 import type { StockRow } from '../types'
 
 type SortKey = 'ticker' | 'name' | 'sector' | 'price' | 'yield' | 'payout' | 'fcf' | 'paid_years' | 'growth_years' | 'market_cap'
@@ -16,7 +16,23 @@ interface Props<T extends StockRow> {
 }
 
 const COLS: { key: SortKey; label: string; num?: boolean; render: (r: StockRow) => ReactNode }[] = [
-  { key: 'ticker', label: 'Ticker', render: (r) => <span className="font-semibold text-slate-900">{r.ticker}</span> },
+  {
+    key: 'ticker',
+    label: 'Ticker',
+    render: (r) => {
+      const why = staleText(r)
+      return (
+        <span className="font-semibold text-slate-900">
+          {r.ticker}
+          {why && (
+            <span className="ml-1 cursor-help text-xs text-amber-600" title={why} aria-label={why}>
+              ⏱
+            </span>
+          )}
+        </span>
+      )
+    },
+  },
   { key: 'name', label: 'Name', render: (r) => <span className="line-clamp-1 max-w-[16rem]" title={r.name ?? ''}>{r.name ?? '—'}</span> },
   { key: 'sector', label: 'Sector', render: (r) => <span className="text-slate-600">{r.sector ?? '—'}</span> },
   { key: 'price', label: 'Price', num: true, render: (r) => fmtPrice(r.price) },

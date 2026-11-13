@@ -117,6 +117,7 @@ def stock(ticker: str, th: Thresholds = Depends(thresholds)) -> dict[str, Any]:
         "fcf_history": detail.get("fcf_history", {}),
         "last_completed_year": detail.get("last_completed_year"),
         "fundamentals_skipped": detail.get("fundamentals_skipped", False),
+        "stale_since": detail.get("stale_since", {}),
         "fetched_at": raw["fetched_at"] if raw else None,
         "fetch_error": raw["error"] if raw else None,
         "watched": t in watch_set(),
@@ -136,6 +137,8 @@ def meta() -> dict[str, Any]:
         "universe_size": int(get_meta(c, "universe_size") or 0),
         "screened": c.execute("SELECT COUNT(*) FROM metrics").fetchone()[0],
         "fetch_errors": len(errs),
+        "stale_count": c.execute("SELECT COUNT(*) FROM metrics WHERE stale IS NOT NULL").fetchone()[0],
+        "not_refreshed_count": c.execute("SELECT COUNT(*) FROM metrics WHERE stale = '[\"all\"]'").fetchone()[0],
         "error_tickers": errs[:500],
     }
 

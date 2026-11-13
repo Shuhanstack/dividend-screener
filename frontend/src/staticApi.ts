@@ -24,6 +24,7 @@ interface Detail {
   eps_history?: Record<string, number>
   fcf_history?: Record<string, number>
   fundamentals_skipped?: boolean
+  stale_since?: Record<string, string>
   fetched_at?: string | null
   fetch_error?: string | null
 }
@@ -85,6 +86,8 @@ export function publicRow(r: Raw, th: Thresholds): StockRow {
     growth_years: v(r, 'growth_years', th),
     has_special: Boolean(r.has_special),
     has_data: Boolean(r.has_data),
+    data_as_of: r.data_as_of as string | null,
+    stale: r.stale ? (JSON.parse(r.stale as string) as string[]) : [],
   }
 }
 
@@ -195,6 +198,7 @@ export const staticApi = {
       fcf_history: d.fcf_history ?? {},
       last_completed_year: d.last_completed_year ?? null,
       fundamentals_skipped: d.fundamentals_skipped ?? false,
+      stale_since: d.stale_since ?? {},
       fetched_at: d.fetched_at ?? null,
       fetch_error: d.fetch_error ?? null,
       watched: t in readWatch(),

@@ -14,7 +14,7 @@ on:
         default: ""
 
 permissions:
-  contents: read
+  contents: write   # to save the database on the `data` branch
   pages: write
   id-token: write
 
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v7
 
@@ -41,33 +41,34 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install -q -r requirements.txt
 
-      # Last week's database: keeps the previous good data for any ticker
-      # that fails to fetch this week (e.g. Yahoo rate limits).
+      # Last week's database lives on the `data` branch (permanent, unlike the
+      # Actions cache). Any ticker that fails to fetch this week keeps that data.
       - name: Restore previous database
-        uses: actions/cache/restore@v6
-        with:
-          path: backend/data/screener.db
-          key: screener-db-${{ github.run_id }}
-          restore-keys: screener-db-
+        run: scripts/data-branch.sh restore backend/data/screener.db
 
+      # Time budgets leave room in the 5h job limit, so a slow week still
+      # publishes: fresh data where it arrived, last week's for the rest.
+      # Fetch order is oldest-data-first, so next week starts where this one stopped.
       - name: Refresh data from Yahoo Finance
         working-directory: backend
         env:
           LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          ARGS="--workers 4"
+          ARGS="--workers 4 --time-budget-min 200"
           if [ -n "$LIMIT" ]; then ARGS="$ARGS --limit $LIMIT"; fi
           .venv/bin/python -m app.refresh $ARGS 2>&1 | tr '\r' '\n' | grep -v '^Fetching' || true
           # one retry pass for tickers that failed (usually rate limits)
-          .venv/bin/python -m app.refresh --retry-errors --workers 2 2>&1 | tr '\r' '\n' | grep -v '^Fetching' || true
+          .venv/bin/python -m app.refresh --retry-errors --workers 2 --time-budget-min 30 2>&1 | tr '\r' '\n' | grep -v '^Fetching' || true
           tail -n 20 data/refresh.log || true
 
-      - name: Save database
+      - name: Save database to data branch
         if: always()
-        uses: actions/cache/save@v6
-        with:
-          path: backend/data/screener.db
-          key: screener-db-${{ github.run_id }}
+        run: |
+          if backend/.venv/bin/python -c "import sqlite3,sys; c=sqlite3.connect('backend/data/screener.db'); sys.exit(c.execute('PRAGMA integrity_check').fetchone()[0] != 'ok')"; then
+            scripts/data-branch.sh save backend/data/screener.db
+          else
+            echo "::warning::Database failed integrity check; keeping the previous data branch."
+          fi
 
       - name: Sanity check and export snapshot
         working-directory: backend
@@ -78,7 +79,10 @@ jobs:
           import os, sqlite3, sys
           c = sqlite3.connect("data/screener.db")
           n, ok = c.execute("SELECT COUNT(*), COALESCE(SUM(has_data), 0) FROM metrics").fetchone()
-          print(f"metrics rows={n} with_data={ok}")
+          stale = c.execute("SELECT COUNT(*) FROM metrics WHERE stale = '[\"all\"]'").fetchone()[0]
+          print(f"metrics rows={n} with_data={ok} not_refreshed_this_run={stale}")
+          if n and stale > n / 2:
+              print(f"::warning::{stale} of {n} stocks were not refreshed this run and show previous data.")
           if ok < int(os.environ["MIN_ROWS"]):
               sys.exit("Too little data fetched; not publishing (previous site stays up).")
           PY

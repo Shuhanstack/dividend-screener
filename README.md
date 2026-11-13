@@ -66,13 +66,25 @@ python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
 
 Each run does the following:
 
-1. Restores last week's SQLite database from the Actions cache. Any ticker that fails this week then keeps its previous data.
-2. Runs `python -m app.refresh` over the full universe, then one `--retry-errors` pass.
-3. Refuses to publish if fewer than 3,000 stocks have data. In that case the previous site stays up.
-4. Runs `python -m app.export`, which writes `screen.json` and `details.json` (a few MB) to `frontend/public/data/`.
-5. Builds the frontend with `VITE_STATIC=1`, which does the screening **in the browser** with the same rules as the API, and deploys it to GitHub Pages.
+1. **Restores last week's database** from the repo's `data` branch, using [`scripts/data-branch.sh`](scripts/data-branch.sh). The branch holds one commit, the gzipped SQLite database (~3 MB), and is force-pushed each run so the repo doesn't grow.
+2. **Refreshes from Yahoo** with a **200-minute time budget**, then makes one 30-minute retry pass for failed tickers. Stocks are fetched oldest-data-first, so a run that stops early is picked up where it left off next week.
+3. **Saves the database back** to the `data` branch. This step always runs, even if the refresh step failed, but is skipped if the database fails an integrity check.
+4. **Checks before publishing.** Fewer than 3,000 stocks with data means no publish. More than half of stocks not refreshed adds a warning.
+5. **Exports and deploys.** It writes `screen.json` and `details.json` and builds the frontend with `VITE_STATIC=1`, which does the screening **in the browser** with the same rules as the API (verified identical on 432 threshold combinations). The result is deployed to GitHub Pages.
 
 On the static site the watchlist is stored in your browser's localStorage, since there is no server.
+
+### What happens when Yahoo is slow or fails
+
+| Situation | Result |
+|---|---|
+| One stock fails to download | It keeps last week's data, marked ⏱ "not refreshed in the latest run" |
+| A download succeeds but is missing fields (e.g. EPS or cash flow) | Those fields keep their last known values, marked ⏱ with the field names and their original date |
+| Yahoo is slow and the time budget runs out | The site publishes fresh data where it arrived and last week's data for the rest. Next week starts with the oldest data |
+| The run fails, or fewer than 3,000 stocks have data | Nothing is published. GitHub Pages keeps serving the previous site |
+| nasdaqtrader.com is down | The refresh reuses last week's stock list |
+
+The header shows how many stocks are showing older data. Hover over ⏱ on a row, or open the stock, to see why and from when.
 
 Setup, done once:
 
@@ -81,8 +93,7 @@ Setup, done once:
 
 Caveats:
 
-- Yahoo sometimes throttles GitHub's cloud servers. A run can then take longer or fetch fewer stocks. The cache fallback and the 3,000-stock guard keep a bad week from replacing good data.
-- Actions cache entries unused for 7 days can be evicted. If that happens, the next run simply fetches everything fresh.
+- Yahoo sometimes throttles GitHub's cloud servers. The **first run** starts with no previous data, so if it is cut short it may not reach the 3,000-stock threshold and won't publish. Run it again from the Actions tab; it continues from where it stopped.
 - GitHub disables scheduled workflows in public repos after 60 days without repository activity. Re-enable it from the Actions tab, or push any commit.
 
 To try the static build locally:

@@ -91,6 +91,12 @@ export default function App() {
             {meta && (
               <div>
                 {fmtInt(meta.screened)} screened of {fmtInt(meta.universe_size)} in universe
+                {(meta.not_refreshed_count ?? 0) > 0 && (
+                  <span className="text-amber-700" title="These stocks could not be refreshed in the latest run and show their previous data (marked ⏱).">
+                    {' '}
+                    · {fmtInt(meta.not_refreshed_count)} showing older data
+                  </span>
+                )}
                 {meta.fetch_errors > 0 && (
                   <span className="text-amber-700" title={meta.error_tickers.slice(0, 30).map((e) => `${e.ticker}: ${e.error}`).join('\n')}>
                     {' '}

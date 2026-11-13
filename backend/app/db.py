@@ -18,8 +18,9 @@ CREATE TABLE IF NOT EXISTS raw_data (
     ticker      TEXT PRIMARY KEY,
     provider    TEXT,
     payload     TEXT,          -- normalized JSON (see providers.base.TickerData)
-    fetched_at  TEXT,
-    error       TEXT           -- last error, NULL when the fetch succeeded
+    fetched_at  TEXT,          -- last fetch *attempt*
+    payload_at  TEXT,          -- when `payload` was last fetched successfully
+    error       TEXT           -- last error, NULL when the latest attempt succeeded
 );
 CREATE TABLE IF NOT EXISTS metrics (
     ticker              TEXT PRIMARY KEY,
@@ -45,6 +46,9 @@ CREATE TABLE IF NOT EXISTS metrics (
     growth_years_all    INTEGER,
     growth_years_reg    INTEGER,
     detail              TEXT,        -- JSON: annual dividends, specials, histories
+    data_as_of          TEXT,        -- when this ticker's data was last fetched successfully
+    stale               TEXT,        -- JSON list: ["all"] = not refreshed in the latest run,
+                                     -- or field names carried over from an older fetch
     computed_at         TEXT
 );
 CREATE TABLE IF NOT EXISTS watchlist (
@@ -70,7 +74,21 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns introduced after a database was first created."""
+    raw_cols = {r[1] for r in conn.execute("PRAGMA table_info(raw_data)")}
+    if "payload_at" not in raw_cols:
+        conn.execute("ALTER TABLE raw_data ADD COLUMN payload_at TEXT")
+        conn.execute("UPDATE raw_data SET payload_at = fetched_at WHERE payload IS NOT NULL")
+    m_cols = {r[1] for r in conn.execute("PRAGMA table_info(metrics)")}
+    if "stale" not in m_cols:  # metrics is derived data: just rebuild the table
+        conn.execute("DROP TABLE metrics")
+        conn.executescript(SCHEMA)
+    conn.commit()
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:

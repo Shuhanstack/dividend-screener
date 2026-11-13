@@ -34,6 +34,10 @@ export interface StockRow {
   has_data: boolean
   watched?: boolean
   missing_data?: boolean
+  /** when this stock's data was last fetched successfully */
+  data_as_of?: string | null
+  /** ["all"] = not refreshed in the latest run; otherwise fields carried over from an older fetch */
+  stale?: string[]
 }
 
 export interface ScreenResponse {
@@ -69,6 +73,7 @@ export interface StockDetail extends StockRow {
   fcf_history: Record<string, number>
   last_completed_year: number | null
   fundamentals_skipped: boolean
+  stale_since?: Record<string, string>
   fetched_at: string | null
   fetch_error: string | null
   yahoo_url: string
@@ -89,5 +94,7 @@ export interface Meta {
   universe_size: number
   screened: number
   fetch_errors: number
+  stale_count?: number
+  not_refreshed_count?: number
   error_tickers: { ticker: string; error: string; fetched_at: string }[]
 }

@@ -39,6 +39,8 @@ def export(conn: Any, out: Path) -> dict[str, int]:
         "universe_size": int(get_meta(conn, "universe_size") or 0),
         "screened": len(rows),
         "fetch_errors": sum(1 for e, _ in errors.values() if e),
+        "stale_count": sum(1 for r in rows if r.get("stale")),
+        "not_refreshed_count": sum(1 for r in rows if r.get("stale") == '["all"]'),
         "error_tickers": [
             {"ticker": t, "error": e, "fetched_at": f} for t, (e, f) in sorted(errors.items()) if e
         ][:500],

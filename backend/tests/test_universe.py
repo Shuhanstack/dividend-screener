@@ -14,6 +14,7 @@ KO|Coca-Cola Company (The) Common Stock|N|KO|N|100|N|KO
 BRK.B|Berkshire Hathaway Inc. Class B|N|BRK.B|N|100|N|BRK=B
 C$N|Citigroup Inc. Depositary Shares representing 1/1000th Preferred Series N|N|CPRN|N|100|N|C-N
 SPY|SPDR S&P 500 ETF Trust|P|SPY|Y|100|N|SPY
+ASGI|abrdn Global Infrastructure Income Fund|N|ASGI|N|100|N|ASGI
 FOO.WS|Foo Corp Warrants|N|FOO.WS|N|100|N|FOO=W
 File Creation Time: 1112202608:01|||||||
 """

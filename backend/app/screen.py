@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Callable, Literal
@@ -76,7 +77,7 @@ RULES: list[tuple[int, str, Callable[[dict[str, Any], Thresholds], Outcome]]] = 
 LIST_COLUMNS = (
     "ticker, name, sector, industry, market_cap, price, eps_ttm, fcf, fcf_source, has_data, has_special, "
     "dps_ttm_all, dps_ttm_reg, yield_all, yield_reg, payout_all, payout_reg, paid_years_all, paid_years_reg, "
-    "growth_years_all, growth_years_reg"
+    "growth_years_all, growth_years_reg, data_as_of, stale"
 )
 
 
@@ -114,6 +115,8 @@ def public_row(row: dict[str, Any], th: Thresholds) -> dict[str, Any]:
         "growth_years": _v(row, "growth_years", th),
         "has_special": bool(row.get("has_special")),
         "has_data": bool(row.get("has_data")),
+        "data_as_of": row.get("data_as_of"),
+        "stale": json.loads(row["stale"]) if row.get("stale") else [],
     }
 
 
