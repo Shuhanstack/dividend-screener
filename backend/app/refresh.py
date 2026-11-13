@@ -285,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             conn.commit()
         set_meta(conn, "universe_size", str(len(uni)))
-        print(f"Universe: {len(uni):,} common stocks after exclusions.")
+        print(f"Universe: {len(uni):,} symbols (stocks, funds and ETFs) after exclusions.")
         tickers = [s for s, _, _ in uni]
         if args.limit:
             tickers = tickers[: args.limit]
