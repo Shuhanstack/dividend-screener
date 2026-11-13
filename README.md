@@ -54,7 +54,7 @@ python -m app.refresh [--limit N] [--tickers KO,PG,...] [--workers 6] [--force]
                       [--full] [--retry-errors] [--compute-only] [--fixtures]
 ```
 
-- **Universe.** The job downloads `nasdaqlisted.txt` and `otherlisted.txt` from nasdaqtrader.com, then drops ETFs, test issues, warrants, units, rights, preferreds and notes. About 5,900 common stocks remain; the commonly quoted ~8,000 figure includes ETFs.
+- **Universe.** The job downloads `nasdaqlisted.txt` and `otherlisted.txt` from nasdaqtrader.com, then drops ETFs, test issues, warrants, units, rights, preferreds and notes. About 5,900 remain: common stocks plus closed-end funds, which have no ETF flag and are kept on purpose. The commonly quoted ~8,000 figure includes ETFs.
 - **Cache.** Normalized responses are cached in SQLite (`raw_data`, with `fetched_at`). Tickers refreshed within the last 24h are skipped unless you pass `--force`. A failed fetch is logged to `backend/data/refresh.log` and skipped, and any older good payload is kept.
 - **Speed shortcut.** Non-payers (no dividend in the last ~13 months) get only the price-history call and skip fundamentals, because they fail rule 1 either way. Pass `--full` to fetch everything for every stock.
 - **Compute.** After fetching, all metrics are recomputed into the `metrics` table. Screening is an in-memory pass over that table, with no network calls at request time.

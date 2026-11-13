@@ -22,4 +22,5 @@ File Creation Time: 1112202608:01|||||||
 
 def test_parse_excludes_non_common() -> None:
     assert [s for s, _, _ in parse_file(NASDAQ, "nasdaq")] == ["AAPL"]
-    assert [s for s, _, _ in parse_file(OTHER, "other")] == ["KO", "BRK-B"]
+    # closed-end funds (ASGI) are kept; ETFs (SPY) are not
+    assert [s for s, _, _ in parse_file(OTHER, "other")] == ["KO", "BRK-B", "ASGI"]

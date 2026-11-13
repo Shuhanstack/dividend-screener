@@ -22,7 +22,7 @@ EXCHANGES = {"A": "NYSE American", "N": "NYSE", "P": "NYSE Arca", "Z": "Cboe BZX
 _EXCLUDE_NAME = re.compile(
     r"\b(warrants?|units?|rights?|preferred|pfd|preference|depositary shares? (each )?representing"
     r"|notes? due|debentures?|subordinated|trust preferred|% (senior )?notes|perpetual|"
-    r"exchange[- ]traded|etn|etf|funds?)\b",  # 'fund' catches closed-end funds
+    r"exchange[- ]traded|etn|etf)\b",  # closed-end funds are kept (ETFs are dropped via the ETF flag)
     re.IGNORECASE,
 )
 
